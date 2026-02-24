@@ -47,35 +47,38 @@ page = st.sidebar.selectbox(
 )
 
 # 3. DASHBOARD PAGE
+# --- DASHBOARD PAGE ---
 if page == "Dashboard":
     st.title("Live Fleet Dashboard")
+    
     if not df.empty:
+        # Metrics
         col1, col2, col3 = st.columns(3)
-        col1.metric("Total Units", len(df))
-        overdue_count = df["Overdue"].sum() if "Overdue" in df.columns else 0
-        col2.metric("Overdue (Test)", overdue_count)
-        col3.metric("Empty Stock", len(df[df["Status"] == "Empty"]))
+        col1.metric("Total Cylinders", len(df))
         
-        st.subheader("Full Inventory Overview")
-        st.dataframe(df.sort_values("Next_Test_Due"), use_container_width=True)
-    else:
-        st.warning("No data found. Please add a cylinder to begin.")
+        ist = pytz.timezone('Asia/Kolkata')
+        today = datetime.now(ist).date()
+        # We still calculate the metric so you know the count, even without red rows
+        overdue_count = len(df[df["Next_Test_Due"].dt.date <= today])
+        
+        col2.metric("Overdue (Test)", overdue_count)
+        col3.metric("Empty Stock", len(df[df["Status"] == "Empty"])
 
         st.subheader("Inventory Overview")
-        # hide_index=True is the key here
-        st.dataframe(styled_df, use_container_width=True, hide_index=True)
+        # Display the raw dataframe with index hidden
+        st.dataframe(df, use_container_width=True, hide_index=True)
+    else:
+        st.warning("No data found.")
 
 # 4. CYLINDER FINDER (Hardware Scanner Friendly)
 elif page == "Cylinder Finder":
-    st.title("Advanced Cylinder Search")
-    st.info(":Scanner Ready: Click the 'Search ID' box and scan the barcode.")
+    st.title("🔍 Advanced Cylinder Search")
     
     colA, colB, colC = st.columns(3)
     with colA:
-        # Added .strip().upper() so the scanner doesn't fail on lowercase or extra spaces
-        s_id = st.text_input("Search ID", placeholder="Scan or Type...").strip().upper()
+        s_id = st.text_input("Search ID").strip().upper()
     with colB:
-        s_name = st.text_input("Search Customer", placeholder="Customer Name")
+        s_name = st.text_input("Search Customer")
     with colC:
         s_status = st.selectbox("Filter Status", ["All", "Full", "Empty", "Damaged"])
 
@@ -88,7 +91,8 @@ elif page == "Cylinder Finder":
         f_df = f_df[f_df["Status"] == s_status]
 
     st.subheader(f"Results Found: {len(f_df)}")
-    st.dataframe(f_df, use_container_width=True)
+    # hide_index=True applied here
+    st.dataframe(f_df, use_container_width=True, hide_index=True)
 
 # 5. RETURN & PENALTY LOG
 elif page == "Return & Penalty Log":
@@ -160,6 +164,7 @@ footer_text = f"""
 </div>
 """
 st.markdown(footer_text, unsafe_allow_html=True)
+
 
 
 
