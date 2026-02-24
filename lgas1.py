@@ -47,7 +47,6 @@ page = st.sidebar.selectbox(
 )
 
 # 3. DASHBOARD PAGE
-# --- DASHBOARD PAGE ---
 if page == "Dashboard":
     st.title("Live Fleet Dashboard")
     
@@ -62,7 +61,7 @@ if page == "Dashboard":
         overdue_count = len(df[df["Next_Test_Due"].dt.date <= today])
         
         col2.metric("Overdue (Test)", overdue_count)
-        col3.metric("Empty Stock", len(df[df["Status"] == "Empty"])
+        col3.metric("Empty Stock", len(df[df["Status"] == "Empty"]))
 
         st.subheader("Inventory Overview")
         # Display the raw dataframe with index hidden
@@ -164,6 +163,7 @@ footer_text = f"""
 </div>
 """
 st.markdown(footer_text, unsafe_allow_html=True)
+
 
 
 
