@@ -32,8 +32,8 @@ df = load_supabase_data()
 # ────────────────────────────────────────────────
 # 2. SIDEBAR NAVIGATION
 # ────────────────────────────────────────────────
-st.sidebar.title("LeoGas Management 2026")
-st.sidebar.info("Operational Hub - Hyderabad")
+st.sidebar.title("Gas Cylinder Management 2026")
+st.sidebar.info("Operations - testing")
 page = st.sidebar.selectbox(
     "Select Page",
     ["Dashboard", "Cylinder Finder", "Return & Penalty Log", "Add New Cylinder"]
@@ -153,4 +153,5 @@ elif page == "Add New Cylinder":
                     st.rerun()
                 except Exception as e:
                     st.error(f"Database Error: {e}. (Tip: Ensure 'Capacity_kg' in Supabase is set to 'numeric' or 'float8')")
+
 
