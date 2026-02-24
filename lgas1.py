@@ -44,7 +44,7 @@ df = load_supabase_data()
 # 3. SIDEBAR NAVIGATION
 # ────────────────────────────────────────────────
 st.sidebar.title("Gas Cylinder Management 2026")
-st.sidebar.info("Operational Hub - Hyderabad")
+st.sidebar.info("Operations - testing")
 
 if st.sidebar.button("🔄 Refresh Data Now"):
     st.cache_data.clear()
@@ -170,6 +170,7 @@ footer_text = f"""
 </div>
 """
 st.markdown(footer_text, unsafe_allow_html=True)
+
 
 
 
