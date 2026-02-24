@@ -61,6 +61,10 @@ if page == "Dashboard":
     else:
         st.warning("No data found. Please add a cylinder to begin.")
 
+        st.subheader("Inventory Overview")
+        # hide_index=True is the key here
+        st.dataframe(styled_df, use_container_width=True, hide_index=True)
+
 # 4. CYLINDER FINDER (Hardware Scanner Friendly)
 elif page == "Cylinder Finder":
     st.title("Advanced Cylinder Search")
@@ -156,6 +160,7 @@ footer_text = f"""
 </div>
 """
 st.markdown(footer_text, unsafe_allow_html=True)
+
 
 
 
