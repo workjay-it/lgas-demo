@@ -4,43 +4,51 @@ from datetime import datetime
 from st_supabase_connection import SupabaseConnection
 
 # ────────────────────────────────────────────────
-# 1. DATABASE CONNECTION
+# 1. INITIALIZE SESSION STATE (Fixes KeyError)
 # ────────────────────────────────────────────────
-# Uses [connections.supabase] from Streamlit Secrets
+if "last_refresh" not in st.session_state:
+    st.session_state["last_refresh"] = "Initializing..."
+
+# ────────────────────────────────────────────────
+# 2. DATABASE CONNECTION
+# ────────────────────────────────────────────────
 conn = st.connection("supabase", type=SupabaseConnection)
 
 @st.cache_data(ttl=60)
 def load_supabase_data():
     try:
-        # Fetch all rows from the 'cylinders' table
         response = conn.table("cylinders").select("*").execute()
         df = pd.DataFrame(response.data)
         
+        # Update the refresh time upon successful load
+        st.session_state["last_refresh"] = datetime.now().strftime("%I:%M:%S %p")
+        
         if not df.empty:
-            # Data Cleaning
             df["Location_PIN"] = df["Location_PIN"].astype(str).str.strip()
             for col in ["Last_Fill_Date", "Last_Test_Date", "Next_Test_Due"]:
                 if col in df.columns:
                     df[col] = pd.to_datetime(df[col], errors='coerce')
         return df
     except Exception as e:
+        # If loading fails, we still want a timestamp for the error state
+        st.session_state["last_refresh"] = f"Error at {datetime.now().strftime('%I:%M:%S %p')}"
         st.error(f"Database Connection Error: {e}")
         return pd.DataFrame()
 
 df = load_supabase_data()
 
 # ────────────────────────────────────────────────
-# 2. SIDEBAR NAVIGATION
+# 3. SIDEBAR NAVIGATION
 # ────────────────────────────────────────────────
 st.sidebar.title("Gas Cylinder Management 2026")
-st.sidebar.info("Operations - testing")
+st.sidebar.info("Operational Hub - Hyderabad")
 page = st.sidebar.selectbox(
     "Select Page",
     ["Dashboard", "Cylinder Finder", "Return & Penalty Log", "Add New Cylinder"]
 )
 
 # ────────────────────────────────────────────────
-# 3. DASHBOARD PAGE
+# 4. DASHBOARD PAGE
 # ────────────────────────────────────────────────
 if page == "Dashboard":
     st.title("Live Fleet Dashboard")
@@ -57,7 +65,7 @@ if page == "Dashboard":
         st.warning("No data found. Please add a cylinder to begin.")
 
 # ────────────────────────────────────────────────
-# 4. ADVANCED CYLINDER FINDER
+# 5. ADVANCED CYLINDER FINDER
 # ────────────────────────────────────────────────
 elif page == "Cylinder Finder":
     st.title("🔍 Advanced Cylinder Search")
@@ -70,7 +78,6 @@ elif page == "Cylinder Finder":
     with colC:
         s_status = st.selectbox("Filter Status", ["All", "Full", "Empty", "Damaged"])
 
-    # Filtering Logic
     f_df = df.copy()
     if s_id:
         f_df = f_df[f_df["Cylinder_ID"].str.contains(s_id, case=False, na=False)]
@@ -83,24 +90,18 @@ elif page == "Cylinder Finder":
     st.dataframe(f_df, use_container_width=True)
 
 # ────────────────────────────────────────────────
-# 5. RETURN & PENALTY LOG
+# 6. RETURN & PENALTY LOG
 # ────────────────────────────────────────────────
 elif page == "Return & Penalty Log":
     st.title("Cylinder Return Audit")
-    
     if not df.empty:
         target_id = st.selectbox("Select ID for Return", options=df["Cylinder_ID"].unique())
-        
         with st.form("audit_form"):
             condition = st.selectbox("Condition", ["Good", "Dented", "Leaking", "Valve Damage"])
             if st.form_submit_button("Submit Return"):
                 new_status = "Empty" if condition == "Good" else "Damaged"
                 try:
-                    conn.table("cylinders").update({
-                        "Status": new_status, 
-                        "Fill_Percent": 0
-                    }).eq("Cylinder_ID", target_id).execute()
-                    
+                    conn.table("cylinders").update({"Status": new_status, "Fill_Percent": 0}).eq("Cylinder_ID", target_id).execute()
                     st.success(f"Cylinder {target_id} updated successfully!")
                     st.cache_data.clear()
                     st.rerun()
@@ -108,7 +109,7 @@ elif page == "Return & Penalty Log":
                     st.error(f"Update failed: {e}")
 
 # ────────────────────────────────────────────────
-# 6. ADD NEW CYLINDER (With Decimals)
+# 7. ADD NEW CYLINDER
 # ────────────────────────────────────────────────
 elif page == "Add New Cylinder":
     st.title("Register New Stock")
@@ -117,11 +118,10 @@ elif page == "Add New Cylinder":
         cust = st.text_input("Customer Name")
         pin = st.text_input("Location PIN (Numbers Only)", max_chars=6)
         
-        # Capacity Dropdown using decimals from LeoGas product list
         cap_val = st.selectbox(
             "Cylinder Capacity (kg)", 
             options=[5.0, 10.0, 14.2, 19.0, 47.5],
-            index=2, # Defaults to 14.2
+            index=2, # Default to 14.2
             format_func=lambda x: f"{x} kg"
         )
         
@@ -130,14 +130,13 @@ elif page == "Add New Cylinder":
                 st.error("Please enter a Cylinder ID.")
             else:
                 today = datetime.now().date()
-                next_due = today + pd.Timedelta(days=1825) # 5 years
+                next_due = today + pd.Timedelta(days=1825)
                 
-                # Payload including decimals
                 payload = {
                     "Cylinder_ID": str(c_id),
                     "Customer_Name": str(cust),
                     "Location_PIN": int(pin) if pin.isdigit() else 0,
-                    "Capacity_kg": float(cap_val), # This sends 14.2 as a float
+                    "Capacity_kg": float(cap_val),
                     "Fill_Percent": 100,
                     "Status": "Full",
                     "Last_Fill_Date": str(today),
@@ -152,18 +151,19 @@ elif page == "Add New Cylinder":
                     st.cache_data.clear()
                     st.rerun()
                 except Exception as e:
-                    st.error(f"Database Error: {e}. (Tip: Ensure 'Capacity_kg' in Supabase is set to 'numeric' or 'float8')")
+                    st.error(f"Database Error: {e}. (Tip: Ensure 'Capacity_kg' is 'numeric' in Supabase)")
 
 # ────────────────────────────────────────────────
-# 7. CUSTOMIZABLE FOOTER (The Caption)
+# 8. ENHANCED FOOTER (Editable Caption)
 # ────────────────────────────────────────────────
-st.markdown("---")  # Visual separator line
+st.markdown("---")
 last_time = st.session_state["last_refresh"]
-footer_text = """
+footer_text = f"""
 <div style="text-align: center; color: grey; font-size: 0.8em;">
-    <p><b>Project:</b> Domestic Gas Project | <b>Developed by</b> KWS </p>
-    <p><b>Deployed through</b> Streamlit </p>
-    <p> Gas Cylinder Tracking, v.1.0</p>
+    <p><b>Project:</b> Domestic Gas Project | <b>Developed by:</b> KWS </p>
+    <p><b>Softwares:</b> Streamlit, Supabase, Python, GitHub</p>
+    <p style="color: #007bff;"><b>Last Cloud Refresh:</b> {last_time}</p>
+    <p>© 2026 LeoGas Management System • v.1.2</p>
 </div>
 """
 st.markdown(footer_text, unsafe_allow_html=True)
