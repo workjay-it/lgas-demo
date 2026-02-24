@@ -37,7 +37,7 @@ df = load_supabase_data()
 st.sidebar.title("Cylinder Management 2026")
 st.sidebar.info("Operations - Domestic Gas Testing")
 
-if st.sidebar.button("🔄 Refresh Data Now"):
+if st.sidebar.button("Refresh Data Now"):
     st.cache_data.clear()
     st.rerun()
 
@@ -84,7 +84,7 @@ if page == "Dashboard":
 # 4. CYLINDER FINDER (Hardware Scanner Friendly)
 # --- CYLINDER FINDER ---
 elif page == "Cylinder Finder":
-    st.title("🔍 Advanced Cylinder Search")
+    st.title("Advanced Cylinder Search")
     
     # 1. Search Inputs
     colA, colB, colC = st.columns(3)
@@ -208,6 +208,7 @@ footer_text = f"""
 </div>
 """
 st.markdown(footer_text, unsafe_allow_html=True)
+
 
 
 
