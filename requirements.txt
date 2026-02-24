@@ -1,0 +1,3 @@
+streamlit==1.52.2  # or latest
+pandas
+faker  # if using it
