@@ -169,12 +169,13 @@ last_time = st.session_state["last_refresh"]
 footer_text = f"""
 <div style="text-align: center; color: grey; font-size: 0.85em; font-family: sans-serif;">
     <p><b>Project:</b> Domestic Gas Project | <b>Developed by:</b> KWS </p>
-    <p><b>Softwares:</b> Streamlit, Supabase, Python, GitHub</p>
-    <p style="color: #007bff;"><b>Last Cloud Refresh:</b> {last_time} IST</p>
-    <p>© 2026 LeoGas Management System • v.1.3</p>
+    <p><b>Deployed by</b> Streamlit </p>
+    <p style="color: #007bff;"><b>Last Refresh:</b> {last_time} IST</p>
+    <p>© Cylinder Management System v1.2</p>
 </div>
 """
 st.markdown(footer_text, unsafe_allow_html=True)
+
 
 
 
