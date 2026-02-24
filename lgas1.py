@@ -112,9 +112,9 @@ elif page == "Add New Cylinder":
     # clear_on_submit=True is critical for scanners so you don't have to delete the old ID manually
     with st.form("new_entry_form", clear_on_submit=True):
         st.write("Scan the cylinder barcode to auto-fill ID.")
-        c_id = st.text_input("New Cylinder ID").strip().upper()
+        c_id = st.text_input("New Cylinder ID", value="HP-XXXXXXXX").strip().upper()
         
-        cust = st.text_input("Customer Name", value="Internal Stock")
+        cust = st.text_input("Customer Name", value="Please enter customer name")
         pin = st.text_input("Location PIN", value="500001", max_chars=6)
         
         cap_val = st.selectbox("Capacity (kg)", options=[5.0, 10.0, 14.2, 19.0, 47.5], index=2)
@@ -157,6 +157,7 @@ footer_text = f"""
 </div>
 """
 st.markdown(footer_text, unsafe_allow_html=True)
+
 
 
 
