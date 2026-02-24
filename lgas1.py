@@ -51,24 +51,35 @@ if page == "Dashboard":
     st.title("Live Fleet Dashboard")
     
     if not df.empty:
-        # Metrics
-        col1, col2, col3 = st.columns(3)
-        col1.metric("Total Cylinders", len(df))
-        
+        # 1. Setup Dates
         ist = pytz.timezone('Asia/Kolkata')
         today = datetime.now(ist).date()
-        # We still calculate the metric so you know the count, even without red rows
+
+        # 2. Metrics
+        col1, col2, col3 = st.columns(3)
+        col1.metric("Total Units", len(df))
         overdue_count = len(df[df["Next_Test_Due"].dt.date <= today])
-        
         col2.metric("Overdue (Test)", overdue_count)
         col3.metric("Empty Stock", len(df[df["Status"] == "Empty"]))
 
+        # 3. Style Function (Dark Grey / Near Black)
+        def highlight_overdue(row):
+            # Hex #1E1E1E is a soft "Onyx" grey close to black
+            if row["Next_Test_Due"].date() <= today:
+                return ['background-color: #303030; color: white; font-weight: bold'] * len(row)
+            return [''] * len(row)
+
+        styled_df = df.style.apply(highlight_overdue, axis=1)
+
         st.subheader("Inventory Overview")
-        # Display the raw dataframe with index hidden
-        st.dataframe(df, use_container_width=True, hide_index=True)
+        
+        # 4. Display with Hidden Index
+        st.dataframe(styled_df, use_container_width=True, hide_index=True)
+        
+        # 5. Footer Note
+        st.caption("Rows in Grey indicate cylinders that have exceeded their safety test date.")
     else:
         st.warning("No data found.")
-
 # 4. CYLINDER FINDER (Hardware Scanner Friendly)
 elif page == "Cylinder Finder":
     st.title("🔍 Advanced Cylinder Search")
@@ -90,7 +101,7 @@ elif page == "Cylinder Finder":
         f_df = f_df[f_df["Status"] == s_status]
 
     st.subheader(f"Results Found: {len(f_df)}")
-    # hide_index=True applied here
+    # hide_index=True removes the 0,1,2,3... column here as well
     st.dataframe(f_df, use_container_width=True, hide_index=True)
 
 # 5. RETURN & PENALTY LOG
@@ -119,10 +130,10 @@ elif page == "Add New Cylinder":
     # clear_on_submit=True is critical for scanners so you don't have to delete the old ID manually
     with st.form("new_entry_form", clear_on_submit=True):
         st.write("Scan the cylinder barcode to auto-fill ID.")
-        c_id = st.text_input("New Cylinder ID", value="HP-XXXXXXXX").strip().upper()
+        c_id = st.text_input("New Cylinder ID").strip().upper()
         
-        cust = st.text_input("Customer Name", value="Enter Customer Name here")
-        pin = st.text_input("Location PIN", value="Enter Zipcode here", max_chars=6)
+        cust = st.text_input("Customer Name", value="Internal Stock")
+        pin = st.text_input("Location PIN", value="500001", max_chars=6)
         
         cap_val = st.selectbox("Capacity (kg)", options=[5.0, 10.0, 14.2, 19.0, 47.5], index=2)
         
@@ -163,6 +174,7 @@ footer_text = f"""
 </div>
 """
 st.markdown(footer_text, unsafe_allow_html=True)
+
 
 
 
