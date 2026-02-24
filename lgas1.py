@@ -125,7 +125,7 @@ elif page == "Add New Cylinder":
             format_func=lambda x: f"{x} kg"
         )
         
-        if st.form_submit_button("Add to Cloud"):
+        if st.form_submit_button("Add Cylinder"):
             if not c_id:
                 st.error("Please enter a Cylinder ID.")
             else:
@@ -153,3 +153,4 @@ elif page == "Add New Cylinder":
                     st.rerun()
                 except Exception as e:
                     st.error(f"Database Error: {e}. (Tip: Ensure 'Capacity_kg' in Supabase is set to 'numeric' or 'float8')")
+
