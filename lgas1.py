@@ -154,4 +154,18 @@ elif page == "Add New Cylinder":
                 except Exception as e:
                     st.error(f"Database Error: {e}. (Tip: Ensure 'Capacity_kg' in Supabase is set to 'numeric' or 'float8')")
 
+# ────────────────────────────────────────────────
+# 7. CUSTOMIZABLE FOOTER (The Caption)
+# ────────────────────────────────────────────────
+st.markdown("---")  # Visual separator line
+footer_text = """
+<div style="text-align: center; color: grey; font-size: 0.8em;">
+    <p><b>Company:</b> Domestic Gas Project | <b>Developed by</b> KWS </p>
+    <p><b>Deployed through</b> Streamlit </p>
+    <p> Gas Cylinder Tracking, v.1.0</p>
+</div>
+"""
+st.markdown(footer_text, unsafe_allow_html=True)
+
+
 
