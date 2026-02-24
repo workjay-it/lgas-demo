@@ -158,6 +158,7 @@ elif page == "Add New Cylinder":
 # 7. CUSTOMIZABLE FOOTER (The Caption)
 # ────────────────────────────────────────────────
 st.markdown("---")  # Visual separator line
+last_time = st.session_state["last_refresh"]
 footer_text = """
 <div style="text-align: center; color: grey; font-size: 0.8em;">
     <p><b>Project:</b> Domestic Gas Project | <b>Developed by</b> KWS </p>
@@ -166,6 +167,7 @@ footer_text = """
 </div>
 """
 st.markdown(footer_text, unsafe_allow_html=True)
+
 
 
 
