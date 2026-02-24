@@ -78,7 +78,7 @@ elif page == "Cylinder Finder":
     
     colA, colB, colC = st.columns(3)
     with colA:
-        s_id = st.text_input("Search ID", placeholder="LEO-XXX")
+        s_id = st.text_input("Search ID", placeholder="LEO-XXXXXXXX")
     with colB:
         s_name = st.text_input("Search Customer", placeholder="e.g. Hyderabad Gas")
     with colC:
@@ -170,6 +170,7 @@ footer_text = f"""
 </div>
 """
 st.markdown(footer_text, unsafe_allow_html=True)
+
 
 
 
