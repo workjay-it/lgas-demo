@@ -63,8 +63,8 @@ if page == "Dashboard":
 
 # 4. CYLINDER FINDER (Hardware Scanner Friendly)
 elif page == "Cylinder Finder":
-    st.title("🔍 Advanced Cylinder Search")
-    st.info("💡 Scanner Ready: Click the 'Search ID' box and scan the barcode.")
+    st.title("Advanced Cylinder Search")
+    st.info(":Scanner Ready: Click the 'Search ID' box and scan the barcode.")
     
     colA, colB, colC = st.columns(3)
     with colA:
@@ -157,6 +157,7 @@ footer_text = f"""
 </div>
 """
 st.markdown(footer_text, unsafe_allow_html=True)
+
 
 
 
