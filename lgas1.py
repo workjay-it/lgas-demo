@@ -41,7 +41,7 @@ df = load_supabase_data()
 # 3. SIDEBAR NAVIGATION
 # ────────────────────────────────────────────────
 st.sidebar.title("Gas Cylinder Management 2026")
-st.sidebar.info("Operational Hub - Hyderabad")
+st.sidebar.info("Operations - testing")
 page = st.sidebar.selectbox(
     "Select Page",
     ["Dashboard", "Cylinder Finder", "Return & Penalty Log", "Add New Cylinder"]
@@ -160,13 +160,14 @@ st.markdown("---")
 last_time = st.session_state["last_refresh"]
 footer_text = f"""
 <div style="text-align: center; color: grey; font-size: 0.8em;">
-    <p><b>Project:</b> Domestic Gas Project | <b>Developed by:</b> KWS </p>
-    <p><b>Softwares:</b> Streamlit, Supabase, Python, GitHub</p>
+    <p><b>Project:</b> Domestic Gas | <b>Developed by:</b> KWS </p>
+    <p><b>Deployed by</b> Streamlit </p>
     <p style="color: #007bff;"><b>Last Cloud Refresh:</b> {last_time}</p>
-    <p>© 2026 LeoGas Management System • v.1.2</p>
+    <p> Cylinder Management System v1.2 </p>
 </div>
 """
 st.markdown(footer_text, unsafe_allow_html=True)
+
 
 
 
