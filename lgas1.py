@@ -1,16 +1,17 @@
 import streamlit as st
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timedelta
+import pytz  # Handles accurate IST time conversion
 from st_supabase_connection import SupabaseConnection
 
 # ────────────────────────────────────────────────
-# 1. INITIALIZE SESSION STATE (Fixes KeyError)
+# 1. INITIALIZE SESSION STATE
 # ────────────────────────────────────────────────
 if "last_refresh" not in st.session_state:
     st.session_state["last_refresh"] = "Initializing..."
 
 # ────────────────────────────────────────────────
-# 2. DATABASE CONNECTION
+# 2. DATABASE CONNECTION & LOADING
 # ────────────────────────────────────────────────
 conn = st.connection("supabase", type=SupabaseConnection)
 
@@ -20,8 +21,10 @@ def load_supabase_data():
         response = conn.table("cylinders").select("*").execute()
         df = pd.DataFrame(response.data)
         
-        # Update the refresh time upon successful load
-        st.session_state["last_refresh"] = datetime.now().strftime("%I:%M:%S %p")
+        # FIX: Capture current time in IST (Asia/Kolkata)
+        ist = pytz.timezone('Asia/Kolkata')
+        ist_now = datetime.now(ist)
+        st.session_state["last_refresh"] = ist_now.strftime("%I:%M:%S %p")
         
         if not df.empty:
             df["Location_PIN"] = df["Location_PIN"].astype(str).str.strip()
@@ -30,8 +33,7 @@ def load_supabase_data():
                     df[col] = pd.to_datetime(df[col], errors='coerce')
         return df
     except Exception as e:
-        # If loading fails, we still want a timestamp for the error state
-        st.session_state["last_refresh"] = f"Error at {datetime.now().strftime('%I:%M:%S %p')}"
+        st.session_state["last_refresh"] = "Refresh Error"
         st.error(f"Database Connection Error: {e}")
         return pd.DataFrame()
 
@@ -41,14 +43,18 @@ df = load_supabase_data()
 # 3. SIDEBAR NAVIGATION
 # ────────────────────────────────────────────────
 st.sidebar.title("Gas Cylinder Management 2026")
-st.sidebar.info("Operations - testing")
+st.sidebar.info("Operational Hub - Hyderabad")
+
+# Manual Refresh Button
+if st.sidebar.button("🔄 Refresh Data Now"):
+    st.cache_data.clear()
+    st.rerun()
+
 page = st.sidebar.selectbox(
     "Select Page",
     ["Dashboard", "Cylinder Finder", "Return & Penalty Log", "Add New Cylinder"]
 )
-if st.sidebar.button("🔄 Refresh Data Now"):
-    st.cache_data.clear()
-    st.rerun()
+
 # ────────────────────────────────────────────────
 # 4. DASHBOARD PAGE
 # ────────────────────────────────────────────────
@@ -153,22 +159,23 @@ elif page == "Add New Cylinder":
                     st.cache_data.clear()
                     st.rerun()
                 except Exception as e:
-                    st.error(f"Database Error: {e}. (Tip: Ensure 'Capacity_kg' is 'numeric' in Supabase)")
+                    st.error(f"Database Error: {e}")
 
 # ────────────────────────────────────────────────
-# 8. ENHANCED FOOTER (Editable Caption)
+# 8. ENHANCED FOOTER (IST Timezone)
 # ────────────────────────────────────────────────
 st.markdown("---")
 last_time = st.session_state["last_refresh"]
 footer_text = f"""
-<div style="text-align: center; color: grey; font-size: 0.8em;">
-    <p><b>Project:</b> Domestic Gas | <b>Developed by:</b> KWS </p>
-    <p><b>Deployed by</b> Streamlit </p>
-    <p style="color: #007bff;"><b>Last Refresh:</b> {last_time}</p>
-    <p> Cylinder Management System v1.2 </p>
+<div style="text-align: center; color: grey; font-size: 0.85em; font-family: sans-serif;">
+    <p><b>Project:</b> Domestic Gas Project | <b>Developed by:</b> KWS </p>
+    <p><b>Softwares:</b> Streamlit, Supabase, Python, GitHub</p>
+    <p style="color: #007bff;"><b>Last Cloud Refresh:</b> {last_time} IST</p>
+    <p>© 2026 LeoGas Management System • v.1.3</p>
 </div>
 """
 st.markdown(footer_text, unsafe_allow_html=True)
+
 
 
 
