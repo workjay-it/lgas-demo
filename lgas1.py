@@ -1,11 +1,13 @@
 import streamlit as st
 import pandas as pd
-from datetime import datetime
 import pytz
 import time
+from datetime import datetime
 from st_supabase_connection import SupabaseConnection
 
-# 1. INITIALIZE & DB CONNECTION
+#-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+# --- 1. INITIALIZE & DB CONNECTION ---
 if "last_refresh" not in st.session_state:
     st.session_state["last_refresh"] = "Initializing..."
 
@@ -14,37 +16,64 @@ conn = st.connection("supabase", type=SupabaseConnection)
 @st.cache_data(ttl=60)
 def load_supabase_data():
     try:
+        # Fetching from the LIVE table for the main dashboard
         response = conn.table("cylinders").select("*").execute()
-        df = pd.DataFrame(response.data)
+        df_raw = pd.DataFrame(response.data)
+        
+        # --- TIMEZONE & DATE CLEANING ---
         ist = pytz.timezone('Asia/Kolkata')
         st.session_state["last_refresh"] = datetime.now(ist).strftime("%I:%M:%S %p")
         
-        if not df.empty:
-            # Ensure Location_PIN is a string for cleaner display
-            df["Location_PIN"] = df["Location_PIN"].astype(str).str.strip()
-            for col in ["Last_Fill_Date", "Last_Test_Date", "Next_Test_Due"]:
-                if col in df.columns:
-                    df[col] = pd.to_datetime(df[col], errors='coerce')
-        return df
+        if not df_raw.empty:
+            if "Location_PIN" in df_raw.columns:
+                df_raw["Location_PIN"] = df_raw["Location_PIN"].astype(str).str.strip()
+            
+            date_cols = ["Last_Fill_Date", "Last_Test_Date", "Next_Test_Due"]
+            for col in date_cols:
+                if col in df_raw.columns:
+                    df_raw[col] = pd.to_datetime(df_raw[col], errors='coerce')
+        
+        return df_raw
     except Exception as e:
         st.session_state["last_refresh"] = "Refresh Error"
         st.error(f"Database Connection Error: {e}")
         return pd.DataFrame()
 
-df = load_supabase_data()
+# Load the base data
+df_main = load_supabase_data()
 
-# 2. SIDEBAR NAVIGATION
-st.sidebar.title("Cylinder Management 2026")
-st.sidebar.info("Operations - Domestic Gas Testing")
+#-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-if st.sidebar.button("Refresh Data Now"):
-    st.cache_data.clear()
-    st.rerun()
+# --- 2. SIDEBAR GLOBAL FILTERS ---
+st.sidebar.header("📊 Global Filters")
 
+# Display the last refresh time (useful for debugging connectivity)
+st.sidebar.caption(f"Last Sync: {st.session_state['last_refresh']}")
+
+# TEMPORARY: We define 'df' as the full dataset to bypass the Batch_ID KeyError
+# This ensures Dashboard, Finder, and Inventory pages still have data to show.
+df = df_main.copy()
+
+# Add a simple status message so you know the filter is off
+st.sidebar.info(f"Total Fleet: {len(df)} units")
+st.sidebar.warning("Category Filter: Temporarily Disabled")
+
+
+#-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+# --- 3. SIDEBAR NAVIGATION (CRITICAL FIX) ---
+# This defines the 'page' variable so you don't get a NameError
 page = st.sidebar.selectbox(
-    "Select Page",
-    ["Dashboard", "Cylinder Finder", "Return & Penalty Log", "Add New Cylinder"]
+    "Menu", 
+    [
+        "Dashboard", 
+        "Cylinder Finder", 
+        "Bulk Operations", 
+        "Return & Penalty Log", 
+        "Add New Cylinder"
+    ]
 )
+
+#-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 # 3. DASHBOARD PAGE
 if page == "Dashboard":
@@ -80,6 +109,8 @@ if page == "Dashboard":
         st.caption("**Grey Rows indicate cylinders that have exceeded their safety test date.")
     else:
         st.warning("No data found.")
+        
+#-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 # 4. CYLINDER FINDER (Hardware Scanner Friendly)
 elif page == "Cylinder Finder":
@@ -148,7 +179,134 @@ elif page == "Cylinder Finder":
 
     st.subheader(f"Results Found: {len(f_df)}")
     st.dataframe(styled_f_df, use_container_width=True, hide_index=True)
+
+#-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+# --- 5. BULK OPERATIONS  ---
+elif page == "Bulk Operations":
+    st.title("🚛 Bulk Management & Progress")
     
+    # 🧪 CONFIGURATION
+    TARGET_TABLE = "TEST_cylinders" 
+    st.warning(f"CURRENTLY TESTING ON: `{TARGET_TABLE}`")
+
+    # Initialize session state for automation
+    if "bulk_ids_val" not in st.session_state:
+        st.session_state.bulk_ids_val = ""
+    if "batch_search_val" not in st.session_state:
+        st.session_state.batch_search_val = ""
+
+    # 1. BATCH LOOKUP SECTION
+    with st.container(border=True):
+        col_id, col_btn = st.columns([3, 1])
+        with col_id:
+            batch_lookup = st.text_input(
+                "Track Batch Number", 
+                value=st.session_state.batch_search_val,
+                placeholder="e.g., BATCH001",
+                key="batch_lookup_input"
+            )
+        
+        batch_data = pd.DataFrame()
+        if batch_lookup:
+            res = conn.table(TARGET_TABLE).select("*").eq("Batch_ID", batch_lookup).execute()
+            batch_data = pd.DataFrame(res.data)
+            
+            if not batch_data.empty:
+                with col_btn:
+                    st.write("") 
+                    if st.button("Retrieve info", use_container_width=True):
+                        # Filter to only pull IDs that aren't 'Full' yet (The remaining units)
+                        remaining = batch_data[batch_data["Status"] != "Full"]
+                        ids_to_pull = remaining["Cylinder_ID"].astype(str).tolist() if not remaining.empty else batch_data["Cylinder_ID"].astype(str).tolist()
+                        
+                        # --- THE AUTOMATION FIX: Explicitly set session state keys ---
+                        st.session_state.bulk_ids_val = "\n".join(ids_to_pull)
+                        st.session_state.batch_search_val = batch_lookup
+                        st.session_state["confirm_batch"] = batch_lookup # Auto-fills Confirm Batch ID box
+                        
+                        st.rerun()
+            else:
+                st.info("No data found for this Batch ID.")
+
+    st.divider()
+
+    # 2. THE BULK UPDATE FORM
+    with st.expander("Bulk Update Form", expanded=True):
+        c1, c2 = st.columns(2)
+        with c1:
+            # We use the 'key' to allow "Pull IDs" to fill this box automatically
+            target_batch = st.text_input("Confirm Batch ID", key="confirm_batch")
+            dest = st.selectbox("New Location", ["Testing Center", "Gas Company"], key="dest_select")
+        with c2:
+            new_status = st.selectbox("New Status", ["No Change", "Empty", "Full", "Damaged"], key="status_select")
+            new_owner = st.text_input("Update Customer/Owner", key="owner_input")
+
+        bulk_input = st.text_area("Cylinder IDs to Update", value=st.session_state.bulk_ids_val, height=200)
+
+        # --- Button Actions ---
+        st.write("---")
+        col_process, col_clear = st.columns([3, 1])
+        
+        with col_process:
+            if st.button("Process Bulk Update", use_container_width=True, type="primary"):
+                if bulk_input and target_batch:
+                    id_list = [i.strip().upper() for i in bulk_input.replace(',', '\n').split('\n') if i.strip()]
+                    payload = {"Batch_ID": target_batch, "Current_Location": dest}
+                    if new_status != "No Change":
+                        payload["Status"] = new_status
+                    if new_owner:
+                        payload["Customer_Name"] = new_owner
+
+                    try:
+                        conn.table(TARGET_TABLE).update(payload).in_("Cylinder_ID", id_list).execute()
+                        st.success(f"✅ Successfully updated {len(id_list)} cylinders!")
+                        st.balloons()
+                        st.cache_data.clear() # Refresh progress bar data
+                    except Exception as e:
+                        st.error(f"Update failed: {e}")
+                else:
+                    st.error("Please provide both a Batch ID and Cylinder IDs.")
+
+        with col_clear:
+            with st.popover("🧹 Reset Form", use_container_width=True):
+                st.error("This will clear ALL fields. Are you sure?")
+                if st.button("Confirm Master Reset", type="primary", use_container_width=True):
+                    # Clear session states
+                    st.session_state.bulk_ids_val = ""
+                    st.session_state.batch_search_val = ""
+                    # Delete widget keys to reset to defaults
+                    for key in ["batch_lookup_input", "confirm_batch", "dest_select", "status_select", "owner_input"]:
+                        if key in st.session_state: del st.session_state[key]
+                    st.rerun()
+
+    # 3. BATCH RECONCILIATION SECTION (At the bottom)
+    if not batch_data.empty:
+        st.divider()
+        st.subheader("🚩 Batch Reconciliation Status")
+        
+        total = len(batch_data)
+        completed = len(batch_data[batch_data["Status"] == "Full"])
+        prog = completed / total
+        
+        st.write(f"**Overall Progress:** {completed} of {total} units ({(prog*100):.1f}%)")
+        st.progress(prog)
+
+        # Breakdown Metrics
+        remaining_df = batch_data[batch_data["Status"] != "Full"]
+        m1, m2, m3 = st.columns(3)
+        m1.metric("Processed (Full)", completed)
+        m2.metric("In Testing (Empty)", len(remaining_df[remaining_df["Status"] == "Empty"]))
+        m3.metric("Damaged/Rejected", len(remaining_df[remaining_df["Status"] == "Damaged"]))
+        
+        if not remaining_df.empty:
+            with st.expander(f"View IDs of the {len(remaining_df)} Pending Units"):
+                st.dataframe(remaining_df[["Cylinder_ID", "Status", "Current_Location"]], 
+                             use_container_width=True, hide_index=True)
+        else:
+            st.success("Batch Reconciliation Complete: All cylinders accounted for.")
+            
+#-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 # 5. RETURN & PENALTY LOG
 elif page == "Return & Penalty Log":
@@ -169,6 +327,7 @@ elif page == "Return & Penalty Log":
                 except Exception as e:
                     st.error(f"Update failed: {e}")
 
+#-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 # 6. ADD NEW CYLINDER (Hardware Scanner Friendly)
 elif page == "Add New Cylinder":
     st.title("Register New Cylinder")
@@ -208,6 +367,8 @@ elif page == "Add New Cylinder":
                     st.rerun()
                 except Exception as e:
                     st.error(f"Database Error: {e}")
+                    
+#-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 # 7. FOOTER #JCNaga
 st.markdown("---")
@@ -220,6 +381,10 @@ footer_text = f"""
 </div>
 """
 st.markdown(footer_text, unsafe_allow_html=True)
+
+
+
+
 
 
 
